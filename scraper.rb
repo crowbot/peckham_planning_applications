@@ -173,7 +173,6 @@ class Scraper
   end
 
   def run
-    agent.cookie_jar.load('cookies')
 
     # Submit weekly search form, get results
     page_data = []
@@ -203,9 +202,6 @@ class Scraper
         ScraperWiki.save_sqlite([:reference_no], application_info)
       end
     end
-
-    agent.cookie_jar.save_as('cookies', :session => true, :format => :yaml)
-
   end
 
 end
