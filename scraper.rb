@@ -16,6 +16,7 @@ class Scraper
   SUMMARY_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=summary&keyVal="
   DETAILS_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=details&keyVal="
   DATES_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=dates&keyVal="
+  MAKE_COMMENT_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=makeComment&keyVal="
 
   attr_accessor :agent
 
@@ -202,7 +203,11 @@ class Scraper
         sleep 2
         application_info.merge!(parse_application_dates("#{DATES_PATH}#{application_id}"))
         puts application_info
-        ScraperWiki.save_sqlite([:reference_no], application_info)
+
+        application_info[:info_url] = "#{HOST}#{SUMMARY_PATH}#{application_id}"
+        application_info[:comment_url] = "#{HOST}#{MAKE_COMMENT_PATH}#{application_id}"
+
+        ScraperWiki.save_sqlite([:council_reference], application_info)
       end
     end
   end
