@@ -69,6 +69,9 @@ class Scraper
     weekly_list_form['searchType'] = 'Application'
     weekly_list_form['ward'] = 'LANE'
     previous_monday = date - date.wday + 1
+    if previous_monday == date
+      previous_monday = previous_monday - 7
+    end
     weekly_list_form['week'] = previous_monday.strftime('%d %b %Y')
     weekly_list_form['dateType'] = 'DC_Validated'
 
