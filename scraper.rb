@@ -102,11 +102,11 @@ class Scraper
     results = []
     results_elements.each do |result|
       address = result.at('p.address').text.strip
-      reference_no = result.at('p.metaInfo').text.split('|').first.strip.split(" ").last
+      council_reference = result.at('p.metaInfo').text.split('|').first.strip.split(" ").last
       application_path = result.at('a')['href']
-      result_info = { :reference_no => reference_no,
-                      :application_path => application_path,
-                      :address => address }
+      result_info = { council_reference: council_reference,
+                      application_path: application_path,
+                      address: address }
       results << result_info
     end
     return { :page_first => page_first,
@@ -119,9 +119,9 @@ class Scraper
 
   def parse_application_summary(summary_uri)
     page = get_page(summary_uri, {}, :get)
-    reference_no = page.at('span.caseNumber').text.strip
+    council_reference = page.at('span.caseNumber').text.strip
     description = page.at('span.description').text.strip
-    { reference_no: reference_no,
+    { council_reference: council_reference,
       description: description }
   end
 
