@@ -207,6 +207,7 @@ class Scraper
         application_info[:info_url] = "#{HOST}#{SUMMARY_PATH}#{application_id}"
         application_info[:comment_url] = "#{HOST}#{MAKE_COMMENT_PATH}#{application_id}"
         application_info[:date_received] = application_info[:application_received_date]
+        application_info[:date_scraped] = DateTime.now.strftime('%Y-%m-%d')
 
         ScraperWiki.save_sqlite([:council_reference], application_info)
       end
