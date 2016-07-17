@@ -73,6 +73,9 @@ class Scraper
     if previous_monday == date
       previous_monday = previous_monday - 7
     end
+    if previous_monday == date + 1
+      previous_monday = date - 6
+    end
 
     weekly_list_form['week'] = previous_monday.strftime('%d %b %Y')
     puts "Date is #{weekly_list_form['week']}" if VERBOSE
