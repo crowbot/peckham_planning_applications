@@ -75,7 +75,7 @@ class Scraper
     end
 
     weekly_list_form['week'] = previous_monday.strftime('%d %b %Y')
-    puts "Date is #{weekly_list_form['week']}" if verbose
+    puts "Date is #{weekly_list_form['week']}" if VERBOSE
     weekly_list_form['dateType'] = 'DC_Validated'
 
     if VERBOSE
