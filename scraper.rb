@@ -198,9 +198,11 @@ class Scraper
 
     # Get info on each application
     page_data.each do |page_info|
+
       page_info[:results].each do |result|
         application_id = result[:application_path].split('=').last
-        application_info = { application_id: application_id }
+        application_info = { application_id: application_id,
+                             address: result[:address] }
         sleep 2
         application_info.merge!(parse_application_summary("#{SUMMARY_PATH}#{application_id}"))
         sleep 2
