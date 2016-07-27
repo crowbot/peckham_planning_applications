@@ -68,7 +68,7 @@ class Scraper
     weekly_list_form = page.form('searchCriteriaForm')
     weekly_list_form.action = "#{HOST}#{weekly_list_form.action}"
     weekly_list_form['searchType'] = 'Application'
-    weekly_list_form['ward'] = 'LANE'
+    weekly_list_form['searchCriteria.ward'] = 'LANE'
     previous_monday = date - date.wday + 1
     if previous_monday == date
       previous_monday = previous_monday - 7
@@ -88,21 +88,30 @@ class Scraper
   end
 
   def parse_results_page(page)
-    total_results_text = page.at('span.showing').text.strip
-    total_results_match = total_results_text.match(/Showing (\d\d?\d?)-(\d\d?\d?) of (\d\d?\d?)/)
-    page_first = total_results_match[1].to_i
-    page_last = total_results_match[2].to_i
-    page_results = page_last - (page_first - 1)
-    total_results = total_results_match[3]
+    results_info = page.at('span.showing')
+    if results_info
+      total_results_text = results_info.text.strip
+      total_results_match = total_results_text.match(/Showing (\d\d?\d?)-(\d\d?\d?) of (\d\d?\d?)/)
+      page_first = total_results_match[1].to_i
+      page_last = total_results_match[2].to_i
+      page_results = page_last - (page_first - 1)
+      total_results = total_results_match[3]
+      pager = page.at('p.pager.top')
+      next_link = pager.at('a.next')
+      if next_link
+        next_link = next_link['href']
+      end
+      if VERBOSE
+        puts "Getting results #{page_first} to #{page_last} of #{total_results}"
+      end
+    else
+      page_first = page_last = page_results = total_results = next_link = nil
+      if VERBOSE
+        puts "One page of results"
+      end
+    end
 
-    if VERBOSE
-      puts "Getting results #{page_first} to #{page_last} of #{total_results}"
-    end
-    pager = page.at('p.pager.top')
-    next_link = pager.at('a.next')
-    if next_link
-      next_link = next_link['href']
-    end
+
     results_elements = page.search('li.searchresult')
     results = []
     results_elements.each do |result|
