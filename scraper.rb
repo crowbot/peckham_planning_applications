@@ -149,8 +149,17 @@ class Scraper
     page = get_page(summary_uri, {}, :get)
     council_reference = page.at('span.caseNumber').text.strip
     description = page.at('span.description').text.strip
-    { council_reference: council_reference,
-      description: description }
+
+    summary_info = { council_reference: council_reference,
+                     description: description }
+    details = page.at('table#simpleDetailsTable')
+    details.search('tr').each do |row|
+      key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
+      if key == :status
+        summary_info[:status] = row.at('td').text.strip
+      end
+    end
+    summary_info
   end
 
   def parse_application_details(details_uri)
