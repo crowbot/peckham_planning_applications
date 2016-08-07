@@ -61,30 +61,44 @@ class Scraper
     return page
   end
 
-  def submit_weekly_search_form(date)
+  def submit_search_form(date, search_type, ward=nil)
     # Read in a page
-    weekly_search_path = '/online-applications/search.do?action=weeklyList'
-    page = get_page(weekly_search_path, {}, :get)
-    weekly_list_form = page.form('searchCriteriaForm')
-    weekly_list_form.action = "#{HOST}#{weekly_list_form.action}"
-    weekly_list_form['searchType'] = 'Application'
-    weekly_list_form['searchCriteria.ward'] = 'LANE'
-    previous_monday = date - date.wday + 1
-    if previous_monday == date
-      previous_monday = previous_monday - 7
-    end
-    if previous_monday == date + 1
-      previous_monday = date - 6
+    search_path = '/online-applications/search.do?action='
+    if search_type == :weekly
+      search_path += 'weeklyList'
+    else
+      search_path += 'monthlyList'
     end
 
-    weekly_list_form['week'] = previous_monday.strftime('%d %b %Y')
-    puts "Date is #{weekly_list_form['week']}" if VERBOSE
-    weekly_list_form['dateType'] = 'DC_Validated'
+    page = get_page(search_path, {}, :get)
+    form = page.form('searchCriteriaForm')
+    form.action = "#{HOST}#{form.action}"
+    form['searchType'] = 'Application'
+
+    if ward
+      form['searchCriteria.ward'] = ward
+    end
+    if search_type == :weekly
+      previous_monday = date - date.wday + 1
+      if previous_monday == date
+        previous_monday = previous_monday - 7
+      end
+      if previous_monday == date + 1
+        previous_monday = date - 6
+      end
+
+      form['week'] = previous_monday.strftime('%d %b %Y')
+      puts "Date is #{weekly_list_form['week']}" if VERBOSE
+    else
+      form['month'] = date.strftime('%b %Y')
+    end
+
+    form['dateType'] = 'DC_Validated'
 
     if VERBOSE
-      puts "Submitting weekly search form"
+      puts "Submitting #{search_type} search form"
     end
-    agent.submit(weekly_list_form, weekly_list_form.buttons.first)
+    agent.submit(form, form.buttons.first)
   end
 
   def parse_results_page(page)
@@ -151,7 +165,10 @@ class Scraper
                      agent_name: nil,
                      agent_company_name: nil,
                      agent_address: nil,
-                     environmental_assessment_requested: nil }
+                     environmental_assessment_requested: nil,
+                     decision: nil,
+                     actual_decision_level: nil,
+                     expected_decision_level: nil }
 
     details.search('tr').each do |row|
       key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
@@ -194,7 +211,7 @@ class Scraper
 
     # Submit weekly search form, get results
     page_data = []
-    page = submit_weekly_search_form(DateTime.now)
+    page = submit_search_form(DateTime.now, :monthly)
     page_info = parse_results_page(page)
     page_data << page_info
     next_link = page_info[:next_link]
