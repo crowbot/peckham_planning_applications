@@ -166,6 +166,7 @@ class Scraper
   end
 
   def parse_application_summary(summary_uri)
+    summary_info = {}
     begin
       retries ||= 0
       page = get_page(summary_uri, {}, :get)
@@ -193,24 +194,23 @@ class Scraper
   end
 
   def parse_application_details(details_uri)
+    details_info = { application_type: nil,
+                     expected_decision_level: nil,
+                     case_officer: nil,
+                     community_council: nil,
+                     ward: nil,
+                     applicant_name: nil,
+                     agent_name: nil,
+                     agent_company_name: nil,
+                     agent_address: nil,
+                     environmental_assessment_requested: nil,
+                     decision: nil,
+                     actual_decision_level: nil,
+                     expected_decision_level: nil }
     begin
       retries ||= 0
       page = get_page(details_uri, {}, :get)
       details = page.at('table#applicationDetails')
-
-      details_info = { application_type: nil,
-                       expected_decision_level: nil,
-                       case_officer: nil,
-                       community_council: nil,
-                       ward: nil,
-                       applicant_name: nil,
-                       agent_name: nil,
-                       agent_company_name: nil,
-                       agent_address: nil,
-                       environmental_assessment_requested: nil,
-                       decision: nil,
-                       actual_decision_level: nil,
-                       expected_decision_level: nil }
       details.search('tr').each do |row|
         key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
         if details_info.key?(key)
@@ -231,17 +231,17 @@ class Scraper
   end
 
   def parse_application_dates(dates_uri)
+    dates_info = { application_received_date: nil,
+                   application_validated_date: nil,
+                   expiry_date: nil,
+                   actual_committee_date: nil,
+                   standard_consultation_expiry_date: nil,
+                   decision_made_date: nil,
+                   decision_issued_date: nil }
     begin
       retries ||= 0
       page = get_page(dates_uri, {}, :get)
       dates = page.at('table#simpleDetailsTable')
-      dates_info = { application_received_date: nil,
-                     application_validated_date: nil,
-                     expiry_date: nil,
-                     actual_committee_date: nil,
-                     standard_consultation_expiry_date: nil,
-                     decision_made_date: nil,
-                     decision_issued_date: nil }
       dates.search('tr').each do |row|
         key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
         if dates_info.key?(key)
