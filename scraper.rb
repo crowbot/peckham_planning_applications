@@ -149,16 +149,20 @@ class Scraper
                         address: address }
         results << result_info
       end
-      return { :page_first => page_first,
-               :page_last => page_last,
-               :page_results => page_results,
-               :total_results => total_results,
-               :next_link => next_link,
-               :results => results }
     rescue
       puts "parse_results_page failed" if VERBOSE
-      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
+      if (retries += 1) < CONTENT_RETRIES
+        sleep(3) && retry
+      else
+        puts "incomplete results"
+      end
     end
+    return { :page_first => page_first,
+             :page_last => page_last,
+             :page_results => page_results,
+             :total_results => total_results,
+             :next_link => next_link,
+             :results => results }
   end
 
   def parse_application_summary(summary_uri)
@@ -177,11 +181,15 @@ class Scraper
           summary_info[:status] = row.at('td').text.strip
         end
       end
-      summary_info
     rescue
       puts "parse_application_summary failed #{summary_uri}" if VERBOSE
-      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
+      if (retries += 1) < CONTENT_RETRIES
+        sleep(3) && retry
+      else
+        puts "incomplete application dates #{summary_uri}"
+      end
     end
+    summary_info
   end
 
   def parse_application_details(details_uri)
@@ -211,11 +219,15 @@ class Scraper
           raise "Unexpected details heading #{key}"
         end
       end
-      details_info
     rescue
       puts "parse_application_details failed #{details_uri}" if VERBOSE
-      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
+      if (retries += 1) < CONTENT_RETRIES
+        sleep(3) && retry
+      else
+        puts "incomplete application dates #{details_uri}"
+      end
     end
+    details_info
   end
 
   def parse_application_dates(dates_uri)
@@ -238,11 +250,15 @@ class Scraper
           raise "Unexpected details heading #{key}"
         end
       end
-      dates_info
     rescue
       puts "parse_application_dates failed #{dates_uri}" if VERBOSE
-      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
+      if (retries += 1) < CONTENT_RETRIES
+        sleep(3) && retry
+      else
+        puts "incomplete application dates #{dates_uri}"
+      end
     end
+    dates_info
   end
 
   def initialize
