@@ -18,6 +18,7 @@ class Scraper
   DATES_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=dates&keyVal="
   MAKE_COMMENT_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=makeComment&keyVal="
   REQUEST_RETRIES = 2
+  CONTENT_RETRIES = 2
 
   attr_accessor :agent
 
@@ -60,7 +61,7 @@ class Scraper
         end
       rescue
         puts "Request failed #{url} (#{method})" if VERBOSE
-        retry if (retries += 1) < REQUEST_RETRIES
+        sleep(3) && retry if (retries += 1) < REQUEST_RETRIES
       end
 
       if WRITE_CACHE
@@ -111,114 +112,137 @@ class Scraper
   end
 
   def parse_results_page(page)
-    results_info = page.at('span.showing')
-    if results_info
-      total_results_text = results_info.text.strip
-      total_results_match = total_results_text.match(/Showing (\d\d?\d?)-(\d\d?\d?) of (\d\d?\d?)/)
-      page_first = total_results_match[1].to_i
-      page_last = total_results_match[2].to_i
-      page_results = page_last - (page_first - 1)
-      total_results = total_results_match[3]
-      pager = page.at('p.pager.top')
-      next_link = pager.at('a.next')
-      if next_link
-        next_link = next_link['href']
+    begin
+      retries ||= 0
+      results_info = page.at('span.showing')
+      if results_info
+        total_results_text = results_info.text.strip
+        total_results_match = total_results_text.match(/Showing (\d\d?\d?)-(\d\d?\d?) of (\d\d?\d?)/)
+        page_first = total_results_match[1].to_i
+        page_last = total_results_match[2].to_i
+        page_results = page_last - (page_first - 1)
+        total_results = total_results_match[3]
+        pager = page.at('p.pager.top')
+        next_link = pager.at('a.next')
+        if next_link
+          next_link = next_link['href']
+        end
+        if VERBOSE
+          puts "Getting results #{page_first} to #{page_last} of #{total_results}"
+        end
+      else
+        page_first = page_last = page_results = total_results = next_link = nil
+        if VERBOSE
+          puts "One page of results"
+        end
       end
-      if VERBOSE
-        puts "Getting results #{page_first} to #{page_last} of #{total_results}"
-      end
-    else
-      page_first = page_last = page_results = total_results = next_link = nil
-      if VERBOSE
-        puts "One page of results"
-      end
-    end
 
 
-    results_elements = page.search('li.searchresult')
-    results = []
-    results_elements.each do |result|
-      address = result.at('p.address').text.strip
-      council_reference = result.at('p.metaInfo').text.split('|').first.strip.split(" ").last
-      application_path = result.at('a')['href']
-      result_info = { council_reference: council_reference,
-                      application_path: application_path,
-                      address: address }
-      results << result_info
+      results_elements = page.search('li.searchresult')
+      results = []
+      results_elements.each do |result|
+        address = result.at('p.address').text.strip
+        council_reference = result.at('p.metaInfo').text.split('|').first.strip.split(" ").last
+        application_path = result.at('a')['href']
+        result_info = { council_reference: council_reference,
+                        application_path: application_path,
+                        address: address }
+        results << result_info
+      end
+      return { :page_first => page_first,
+               :page_last => page_last,
+               :page_results => page_results,
+               :total_results => total_results,
+               :next_link => next_link,
+               :results => results }
+    rescue
+      puts "parse_results_page failed" if VERBOSE
+      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
     end
-    return { :page_first => page_first,
-             :page_last => page_last,
-             :page_results => page_results,
-             :total_results => total_results,
-             :next_link => next_link,
-             :results => results }
   end
 
   def parse_application_summary(summary_uri)
-    page = get_page(summary_uri, {}, :get)
-    council_reference = page.at('span.caseNumber').text.strip
-    description = page.at('span.description').text.strip
+    begin
+      retries ||= 0
+      page = get_page(summary_uri, {}, :get)
+      council_reference = page.at('span.caseNumber').text.strip
+      description = page.at('span.description').text.strip
 
-    summary_info = { council_reference: council_reference,
-                     description: description }
-    details = page.at('table#simpleDetailsTable')
-    details.search('tr').each do |row|
-      key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
-      if key == :status
-        summary_info[:status] = row.at('td').text.strip
+      summary_info = { council_reference: council_reference,
+                       description: description }
+      details = page.at('table#simpleDetailsTable')
+      details.search('tr').each do |row|
+        key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
+        if key == :status
+          summary_info[:status] = row.at('td').text.strip
+        end
       end
+      summary_info
+    rescue
+      puts "parse_application_summary failed #{summary_uri}" if VERBOSE
+      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
     end
-    summary_info
   end
 
   def parse_application_details(details_uri)
-    page = get_page(details_uri, {}, :get)
-    details = page.at('table#applicationDetails')
-    details_info = { application_type: nil,
-                     expected_decision_level: nil,
-                     case_officer: nil,
-                     community_council: nil,
-                     ward: nil,
-                     applicant_name: nil,
-                     agent_name: nil,
-                     agent_company_name: nil,
-                     agent_address: nil,
-                     environmental_assessment_requested: nil,
-                     decision: nil,
-                     actual_decision_level: nil,
-                     expected_decision_level: nil }
+    begin
+      retries ||= 0
+      page = get_page(details_uri, {}, :get)
+      details = page.at('table#applicationDetails')
 
-    details.search('tr').each do |row|
-      key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
-      if details_info.key?(key)
-        details_info[key] = row.at('td').text.strip
-      else
-        raise "Unexpected details heading #{key}"
+      details_info = { application_type: nil,
+                       expected_decision_level: nil,
+                       case_officer: nil,
+                       community_council: nil,
+                       ward: nil,
+                       applicant_name: nil,
+                       agent_name: nil,
+                       agent_company_name: nil,
+                       agent_address: nil,
+                       environmental_assessment_requested: nil,
+                       decision: nil,
+                       actual_decision_level: nil,
+                       expected_decision_level: nil }
+      details.search('tr').each do |row|
+        key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
+        if details_info.key?(key)
+          details_info[key] = row.at('td').text.strip
+        else
+          raise "Unexpected details heading #{key}"
+        end
       end
+      details_info
+    rescue
+      puts "parse_application_details failed #{details_uri}" if VERBOSE
+      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
     end
-    details_info
   end
 
   def parse_application_dates(dates_uri)
-    page = get_page(dates_uri, {}, :get)
-    dates = page.at('table#simpleDetailsTable')
-    dates_info = { application_received_date: nil,
-                   application_validated_date: nil,
-                   expiry_date: nil,
-                   actual_committee_date: nil,
-                   standard_consultation_expiry_date: nil,
-                   decision_made_date: nil,
-                   decision_issued_date: nil }
-
-    dates.search('tr').each do |row|
-      key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
-      if dates_info.key?(key)
-        dates_info[key] = row.at('td').text.strip
-      else
-        raise "Unexpected details heading #{key}"
+    begin
+      retries ||= 0
+      page = get_page(dates_uri, {}, :get)
+      dates = page.at('table#simpleDetailsTable')
+      dates_info = { application_received_date: nil,
+                     application_validated_date: nil,
+                     expiry_date: nil,
+                     actual_committee_date: nil,
+                     standard_consultation_expiry_date: nil,
+                     decision_made_date: nil,
+                     decision_issued_date: nil }
+      dates.search('tr').each do |row|
+        key = row.at('th').text.strip.downcase.gsub(' ', '_').to_sym
+        if dates_info.key?(key)
+          dates_info[key] = row.at('td').text.strip
+        else
+          raise "Unexpected details heading #{key}"
+        end
       end
+      dates_info
+    rescue
+      puts "parse_application_dates failed #{dates_uri}" if VERBOSE
+      sleep(3) && retry if (retries += 1) < CONTENT_RETRIES
     end
-    dates_info
   end
 
   def initialize
