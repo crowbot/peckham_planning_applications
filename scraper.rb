@@ -17,6 +17,7 @@ class Scraper
   DETAILS_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=details&keyVal="
   DATES_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=dates&keyVal="
   MAKE_COMMENT_PATH = "#{PLANNING_DIR}/applicationDetails.do?activeTab=makeComment&keyVal="
+  REQUEST_RETRIES = 2
 
   attr_accessor :agent
 
@@ -49,11 +50,19 @@ class Scraper
     else
       url = "#{HOST}#{path}"
       puts "Using remote file #{url}" if VERBOSE
-      if method == :get
-        page = agent.get(url)
-      else
-        page = agent.post(url, data)
+
+      begin
+        retries ||= 0
+        if method == :get
+          page = agent.get(url)
+        else
+          page = agent.post(url, data)
+        end
+      rescue
+        puts "Request failed #{url} (#{method})" if VERBOSE
+        retry if (retries += 1) < REQUEST_RETRIES
       end
+
       if WRITE_CACHE
         File.open(cache_path, 'w'){ |file| file.write(page.body) }
       end
