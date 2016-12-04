@@ -74,21 +74,29 @@ class Scraper
   def submit_search_form(date, search_type, ward=nil)
     # Read in a page
     search_path = '/online-applications/search.do?action='
-    if search_type == :weekly
-      search_path += 'weeklyList'
-    else
-      search_path += 'monthlyList'
+
+    case search_type
+      when :weekly
+        search_path += 'weeklyList'
+      when :monthly
+        search_path += 'monthlyList'
+      when :weekly_received
+        search_path += 'advanced'
     end
 
     page = get_page(search_path, {}, :get)
     form = page.form('searchCriteriaForm')
     form.action = "#{HOST}#{form.action}"
-    form['searchType'] = 'Application'
+
+    if [:weekly, :monthly].include? search_type
+      form['searchType'] = 'Application'
+    end
 
     if ward
       form['searchCriteria.ward'] = ward
     end
-    if search_type == :weekly
+
+    if [:weekly_received, :weekly].include? search_type
       previous_monday = date - date.wday + 1
       if previous_monday == date
         previous_monday = previous_monday - 7
@@ -97,14 +105,20 @@ class Scraper
         previous_monday = date - 6
       end
 
-      form['week'] = previous_monday.strftime('%d %b %Y')
-      puts "Date is #{weekly_list_form['week']}" if VERBOSE
+      if search_type == :weekly
+        form['week'] = previous_monday.strftime('%d %b %Y')
+        puts "Date is #{weekly_list_form['week']}" if VERBOSE
+      else
+        form['date(applicationReceivedStart)'] = previous_monday.strftime('%d/%m/%Y')
+        form['date(applicationReceivedEnd)'] = date.strftime('%d/%m/%Y')
+      end
     else
       form['month'] = date.strftime('%b %Y')
     end
 
-    form['dateType'] = 'DC_Validated'
-
+    if [:monthly, :weekly].include? search_type
+      form['dateType'] = 'DC_Validated'
+    end
     if VERBOSE
       puts "Submitting #{search_type} search form"
     end
@@ -269,7 +283,7 @@ class Scraper
 
     # Submit weekly search form, get results
     page_data = []
-    page = submit_search_form(DateTime.now, :monthly)
+    page = submit_search_form(DateTime.now, :weekly_received)
     page_info = parse_results_page(page)
     page_data << page_info
     next_link = page_info[:next_link]
