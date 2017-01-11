@@ -110,7 +110,7 @@ class Scraper
         puts "Date is #{weekly_list_form['week']}" if VERBOSE
       else
         # form['date(applicationReceivedStart)'] = previous_monday.strftime('%d/%m/%Y')
-        form['date(applicationReceivedStart)'] = (Date.today - 30).strftime('%d/%m/%Y')]
+        form['date(applicationReceivedStart)'] = (Date.today - 30).strftime('%d/%m/%Y')
         form['date(applicationReceivedEnd)'] = date.strftime('%d/%m/%Y')
       end
     else
